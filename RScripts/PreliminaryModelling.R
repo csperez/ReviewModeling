@@ -22,7 +22,7 @@ table(usersNumReviews$x)
 #16     17     18     23     25     26     33     37 
 #2      2      1      1      1      2      1      1 
 
-usersWithAtLeastMinReviews = usersNumReviews[which(usersNumReviews$x >= 6),]
+usersWithAtLeastMinReviews = usersNumReviews[which(usersNumReviews$x >= N_minReviews),]
 setnames(usersWithAtLeastMinReviews, "Group.1", "userid")
 print(paste("Num of rows before min-reviews restriction: ", nrow(inputMetaData)))
 

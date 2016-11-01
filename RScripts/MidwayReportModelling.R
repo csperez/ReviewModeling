@@ -4,40 +4,59 @@
 library(data.table)
 library(ggplot2)
 library(sqldf)
+library(MASS)
 setwd('/Users/Chris/Downloads/iTunesData')
 
 inputMetaData = prepareData("itunes3_reviews_meta.csv")
 appsWithCategories = read.csv("appCategories.csv")
-N_minReviews = 3
+N_minReviews = 2
+appCatsSensorTower = read.csv("appCategories_SensorTowerOutput copy.csv")
+appCatsSensorTower = as.data.frame(unique(appCatsSensorTower))
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Adventure"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Arcade"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Board"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Card"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Casino"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Dice"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Educational"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Family"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Music"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Puzzle"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Racing"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Role Playing"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Simulation"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Sports"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Strategy"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Trivia"),]$subcategory = "Games"
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Word"),]$subcategory = "Games"
 
+appCatsSensorTower = appCatsSensorTower[which(appCatsSensorTower$subcategory != "NoneFound"),]
 
-#Attach app categories
-inputMetaData = merge(inputMetaData, appsWithCategories, by = "appid")
+inputMetaData = merge(inputMetaData, appCatsSensorTower, by = "appid")
 
-#For now, impute the categories for the apps that didn't return results in our initial scrape:
-#unknownApps = appsWithCategories[which(appsWithCategories$category == "NoneFound"),]
-
-#remove apps with missing categories
-inputMetaData = inputMetaData[which(inputMetaData$category != "NoneFound" & inputMetaData$category != "TimedOut"),]
-
-
-#For now, restrict data to only activity from users with at least N_minReviews reviews
+#Restrict to only users with at least N reviews:
 usersNumReviews = as.data.frame(unique(inputMetaData[c("userid", "unixTimestamp")]))
 usersNumReviews$tempCol = 1
 usersNumReviews = aggregate(usersNumReviews$tempCol, by = list(usersNumReviews$userid), FUN = sum)
-table(usersNumReviews$x)
+usersWithAtLeastMinReviews = usersNumReviews[which(usersNumReviews$x >= N_minReviews),]
+setnames(usersWithAtLeastMinReviews, "Group.1", "userid")
+setnames(usersWithAtLeastMinReviews, "x", "numReviews")
 
-usersNumReviews = usersNumReviews[which(usersNumReviews$x >= N_minReviews),]
-setnames(usersNumReviews, "Group.1", "userid")
-setnames(usersNumReviews, "x", "numReviews")
-inputMetaData = merge(inputMetaData, usersNumReviews, by = c("userid"))
-
-
-
+inputMetaData = merge(inputMetaData, usersWithAtLeastMinReviews, by = c("userid"))
 
 #####################
 #### 1. Calculate histograms, MM's, and lamdbas for the Basic model
 #####################
+
+#App generation
+#1. N_A()
+#2. app lifetimes
+#3. category distribution
+
+#Node generation
+#1. N_U()
+#2. Choose a genre (genre histogram)
+#3. Choose app in a genre (PA)
 
 #1. lifetime histograms
 
@@ -48,64 +67,31 @@ setnames(userMinTimes, "x","minTime")
 setnames(userMaxTimes, "Group.1","userid")
 setnames(userMaxTimes, "x","maxTime")
 userLifetimes = merge(userMinTimes, userMaxTimes, by = "userid")
-userLifetimes$lifetime = ((userLifetimes$maxTime - userLifetimes$minTime)/(24*60*60))
+#userLifetimes$lifetime = ((userLifetimes$maxTime - userLifetimes$minTime)/(24*60*60))
+#userLifetimes = merge(userLifetimes, inputMetaData[c("userid", "unixTimestamp", "subcategory")], by.x = c("userid", "minTime"), by.y = c("userid", "unixTimestamp"))
+#fit1 <- fitdistr(userLifetimes[which(userLifetimes$subcategory),]$lifetime, "exponential") 
 
-lifetimeHist = hist(userLifetimes$lifetime)
+userLifetimes = merge(userLifetimes, inputMetaData[c("userid", "unixTimestamp", "subcategory", "numReviews")], by.x = c("userid", "minTime"), by.y = c("userid", "unixTimestamp"))
+
+#Category distribution
 
 #2. sleep time histogram
 usersWithTimestamps = inputMetaData[c("userid", "unixTimestamp")]
 usersWithTimestamps = usersWithTimestamps[order(usersWithTimestamps$unixTimestamp),]
 usersWithTimestamps = usersWithTimestamps[order(usersWithTimestamps$userid),]
-
+#gen the prev variables:
 usersWithTimestamps$prevTimestamp = shift(usersWithTimestamps$unixTimestamp, -1)
 usersWithTimestamps$prevUserid = shift(usersWithTimestamps$userid, -1)
+#remove starting period observations:
 usersWithTimestamps = usersWithTimestamps[which(usersWithTimestamps$userid == usersWithTimestamps$prevUserid),]
+
 usersWithTimestamps$userReviewTimeInterval = (usersWithTimestamps$unixTimestamp - usersWithTimestamps$prevTimestamp)/(24*60*60)
 
 hist(usersWithTimestamps$userReviewTimeInterval[which(usersWithTimestamps$userReviewTimeInterval <= 50)], breaks = 30)
 
 
-##### 
-#Need:
-#N_A(), N_U(), app/user lifetime exp lamdba's
-#category histogram
 
 
-
-
-#####################
-#### Iteration sketches
-#####################
-
-######
-#1. Basic
-######
-
-#a. App nodes arrive, according to N_A() and sample a lifetime according to an expfit.
-  #App lifetimes capture their "trending" period
-#a. Nodes arrive, according to the N() arrival function for the Itunes data
-#b. Nodes choose a type (genre), for now according to histogram
-#c. Nodes draw lifetime, for now according to exponential fit
-#d. Nodes draw sleep delta, according to histogram_k
-
-#
-#e. Nodes choose a genre, according to 1-MM
-#f. Nodes choose an app, according to hist_k
-#g. Nodes choose a rating, according to hist_k
-
-
-
-#After we've completed the model and have compared the macroscopic statistics,
-#How should we categorize anomalies?
-#Using likelihood:
-#Given our model, what the probability that it generated each users' distributions?
-#Ratings:
-#delta_ij = pi_k * expfit(lifetime_i) * P(sleepDeltaHist(sleep_delta))
-#ratings_ij = pi_k
-
-#genre choices (1-MM; evaluate chain of probabilities)
-#ratings choices (1-MM; evaluate chain of probabilities)
-#time choices (exp(lambda); evaluate chain of probabilities)
 
 
 
@@ -145,3 +131,31 @@ shift<-function(x,shift_by){
     out<-x
   out
 }
+
+
+
+
+
+userInitial_appCats = c(        "Education"         
+                                ,"Entertainment"  ,   "Finance"                 , "Games"             
+                                , "Health & Fitness",  "Lifestyle"         
+                                , "Medical"       ,    "Music"             , "Navigation"                
+                                , "Photo & Video"   ,  "Productivity"      
+                                , "Reference"     ,    "Social Networking"         ,  "Travel"            
+                                , "Utilities"    )
+
+userLifetimeRates_ByAppCat = as.data.frame(fitdistr(userLifetimes[which(userLifetimes$subcategory == "Books"),]$lifetime, "exponential")$estimate)
+colnames(userLifetimeRates_ByAppCat) = c("rate")
+userLifetimeRates_ByAppCat$subcategory = "Books"
+
+for (cat in userInitial_appCats) {
+  print(cat)
+  tempEstimate = as.data.frame(fitdistr(userLifetimes[which(userLifetimes$subcategory == cat),]$lifetime, "exponential")$estimate)
+  colnames(tempEstimate) = c("rate")
+  tempEstimate$subcategory = cat
+  userLifetimeRates_ByAppCat = rbind(userLifetimeRates_ByAppCat, tempEstimate)
+  
+}
+
+lifetimeHist = hist(userLifetimes$lifetime)
+
