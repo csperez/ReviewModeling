@@ -76,19 +76,6 @@ The process for creating the initial bipartite review graph is as follows.
  of nodes: users and apps.
  Users create edges towards apps according to their chosen genres and apps'
  popularity (PA) within genres.
- Apps do not create edges towards either users or other apps.
- Upon arrival, users sample the number of reviews they will eventually give,
- while apps sample the number of timesteps they will be available for review
- (i.e.
- 
-\begin_inset Quotes eld
-\end_inset
-
-trending
-\begin_inset Quotes erd
-\end_inset
-
-).
 \begin_inset Newline newline
 \end_inset
 

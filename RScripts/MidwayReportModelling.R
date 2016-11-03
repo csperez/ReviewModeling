@@ -5,13 +5,15 @@ library(data.table)
 library(ggplot2)
 library(sqldf)
 library(MASS)
-setwd('/Users/Chris/Downloads/iTunesData')
+setwd('/Users/cperez/Desktop/iTunesData')
 
 inputMetaData = prepareData("itunes3_reviews_meta.csv")
-appsWithCategories = read.csv("appCategories.csv")
+#appsWithCategories = read.csv("appCategories.csv")
 N_minReviews = 2
+
 appCatsSensorTower = read.csv("appCategories_SensorTowerOutput copy.csv")
 appCatsSensorTower = as.data.frame(unique(appCatsSensorTower))
+appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Action"),]$subcategory = "Games"
 appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Adventure"),]$subcategory = "Games"
 appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Arcade"),]$subcategory = "Games"
 appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Board"),]$subcategory = "Games"
@@ -29,10 +31,11 @@ appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Sports"),]$sub
 appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Strategy"),]$subcategory = "Games"
 appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Trivia"),]$subcategory = "Games"
 appCatsSensorTower[which(appCatsSensorTower$subcategory == "Games/Word"),]$subcategory = "Games"
-
 appCatsSensorTower = appCatsSensorTower[which(appCatsSensorTower$subcategory != "NoneFound"),]
 
 inputMetaData = merge(inputMetaData, appCatsSensorTower, by = "appid")
+
+
 
 #Restrict to only users with at least N reviews:
 usersNumReviews = as.data.frame(unique(inputMetaData[c("userid", "unixTimestamp")]))
@@ -41,12 +44,74 @@ usersNumReviews = aggregate(usersNumReviews$tempCol, by = list(usersNumReviews$u
 usersWithAtLeastMinReviews = usersNumReviews[which(usersNumReviews$x >= N_minReviews),]
 setnames(usersWithAtLeastMinReviews, "Group.1", "userid")
 setnames(usersWithAtLeastMinReviews, "x", "numReviews")
-
 inputMetaData = merge(inputMetaData, usersWithAtLeastMinReviews, by = c("userid"))
 
+
+
+
 #####################
-#### 1. Calculate histograms, MM's, and lamdbas for the Basic model
+#### 1. Simulate the model
 #####################
+
+T_timesteps = 3
+
+# At t = 0, create an initial number of nodes.
+numNewApps = round(N_A_t(0))
+numNewUsers = round(N_U_t(0))
+
+currentApps = instantiateNewApps(0, numNewApps)
+currentUsers = instantiateNewUsers(0,numNewUsers)
+
+#At further timesteps, we sample new users and apps and add them to the current collection.
+
+lastAppIndexUsed = 0
+lastUserIndexUsed = 0
+
+  
+for (t in 1:T_timesteps) {
+  
+  lastAppIndexUsed = numNewApps + lastAppIndexUsed
+  lastUserIndexUsed = numNewUsers + lastUserIndexUsed
+  
+  numNewApps = round(N_A_t(t))
+  numNewUsers = round(N_U_t(t))
+  print("num new users:")
+  print(numNewUsers)
+  newApps = instantiateNewApps(lastAppIndexUsed, numNewApps)
+  newUsers = instantiateNewUsers(lastUserIndexUsed,numNewUsers)
+
+  currentApps = rbind(currentApps, newApps)
+  currentUsers = rbind(currentUsers, newUsers)
+  
+}
+
+
+
+
+
+
+#####################
+#### 2. Calculate histograms, MM's, and lamdbas for the Basic model
+#####################
+
+
+#N_U(t):
+#Call:
+#lm(formula = usersWithMinTimestamps$cumulativeNumUsers ~ usersWithMinTimestamps$weeks + 
+#    usersWithMinTimestamps$weeks_sq)
+#Coefficients:
+#                    (Intercept)     usersWithMinTimestamps$weeks  usersWithMinTimestamps$weeks_sq  
+#                       39058.61                         -1593.13                            19.46  
+
+
+#N_A(t):
+#Call:
+#lm(formula = appsWithMinTimestamps$cumulativeNumApps ~ appsWithMinTimestamps$weeks + 
+#    appsWithMinTimestamps$weeks_sq)
+#Coefficients:
+#                   (Intercept)     appsWithMinTimestamps$weeks  appsWithMinTimestamps$weeks_sq  
+#                      232.7242                         -6.4042                          0.2307  
+
 
 #App generation
 #1. N_A()
@@ -91,10 +156,171 @@ hist(usersWithTimestamps$userReviewTimeInterval[which(usersWithTimestamps$userRe
 
 
 
+## Overall genre histogram:
+
+ #            Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
+ #               32                 12                  1                 94                 31                  6                  4                406 
+ #     Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
+ #                0                  0                 13                545                  3                128                  7                 43 
+ #        Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
+ #                1                  0                 86                 27                 55                 98                 22                 27 
+ #        Utilities            Weather 
+ #              232                  1 
 
 
 
 
+
+ #            Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
+ #              
+ #     Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
+ #                0                  0                                                
+ #        Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
+ #                1                  0                                                                               
+ #        Utilities            Weather 
+ #             
+
+
+### Users:
+
+
+#             Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
+#                90                  4                  0                499                109                166                  5               3495 
+##      Games/Action    Games/Adventure       Games/Arcade        Games/Board         Games/Card       Games/Casino         Games/Dice  Games/Educational 
+ #                                0                  0                  0                  0                  0                  0                  0 
+ #     Games/Family        Games/Music       Games/Puzzle       Games/Racing Games/Role Playing   Games/Simulation       Games/Sports     Games/Strategy 
+ ##                0                  0                  0                  0                  0                  0                  0                  0 
+  #    Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
+  ##               0                  0                 57               4516                  6                562                  3                121 
+   #      Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
+   #              0                  0               1546                106                163                642                  4                 29 
+   #      Utilities            Weather 
+   #           1464                 19 
+
+
+#             Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
+#                90                  4                  0                499                109                166                  5               3495 
+##      Games/Action    Games/Adventure       Games/Arcade        Games/Board         Games/Card       Games/Casino         Games/Dice  Games/Educational 
+ #                                0                  0                  0                  0                  0                  0                  0 
+ #     Games/Family        Games/Music       Games/Puzzle       Games/Racing Games/Role Playing   Games/Simulation       Games/Sports     Games/Strategy 
+ ##                0                  0                  0                  0                  0                  0                  0                  0 
+  #    Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
+  ##               0                  0                 57               4516                  6                562                  3                121 
+   #      Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
+   #              0                  0               1546                106                163                642                  4                 29 
+   #      Utilities            Weather 
+   #           1464                 19 
+
+
+
+#####################
+#### 3. Auxiliary functions
+#####################
+
+
+## Create numNewUsers new users, with user ids starting at lastIndexUsed
+
+instantiateNewUsers <- function(lastIndexUsed, numNewUsers) {
+  newUserData = as.data.frame(matrix(lastIndexUsed,numNewUsers,2 ))
+  newUserData$rownumber = 1:nrow(newUserData)
+  newUserData$userid = newUserData$V1 + newUserData$rownumber
+  #Sample their lifetimes:
+  #(lambda was initially estimated at the daily level. It needs to be reestimated at the weekly level.)
+  
+  numReviewsProbVector = c(131073  , 5164  ,  673  ,  156  ,   37    ,15 )
+  numReviewsProbVector = numReviewsProbVector/sum(numReviewsProbVector)
+  cutoffs = numReviewsProbVector*nrow(newUserData)
+  cutoffs[2] = cutoffs[2] + cutoffs[1]
+  cutoffs[3] = cutoffs[3] + cutoffs[2]
+  cutoffs[4] = cutoffs[4] + cutoffs[3] 
+  cutoffs[5] = cutoffs[5] + cutoffs[4]
+  
+  newUserData$userNumReviews = 1
+  newUserData[which(newUserData$rownumber >= cutoffs[1] & newUserData$rownumber < cutoffs[2] ),]$userNumReviews = 2
+  newUserData[which(newUserData$rownumber >= cutoffs[2] & newUserData$rownumber < cutoffs[3] ),]$userNumReviews = 3
+  newUserData[which(newUserData$rownumber >= cutoffs[3] & newUserData$rownumber < cutoffs[4] ),]$userNumReviews = 4
+  newUserData[which(newUserData$rownumber >= cutoffs[4] & newUserData$rownumber < cutoffs[5] ),]$userNumReviews = 5
+  newUserData[which(newUserData$rownumber >= cutoffs[5]  ),]$userNumReviews = 6
+  
+  
+  #Sample their genre:
+  #Coalesced cats: Games, Entertainment (Ent, Music), Reference (Ref, Books, Biz, Educ, News), Lifestyle (Lifestyle, Social Net, Photo), Health/Travel (Health, Nav, Medical, Trav), Utilities (Ut. and prod)
+  
+  newUserData <- newUserData[sample(1:nrow(newUserData)), ]
+  
+  genreProbVector = c(3495,109+562, 163+90+4+499+121, 4516+642+1546, 57+3+6+29, 65, 259)
+
+  genreProbVector = genreProbVector/sum(genreProbVector)
+  cutoffs = genreProbVector*nrow(newUserData)
+  cutoffs[2] = cutoffs[2] + cutoffs[1]
+  cutoffs[3] = cutoffs[3] + cutoffs[2]
+  cutoffs[4] = cutoffs[4] + cutoffs[3] 
+  cutoffs[5] = cutoffs[5] + cutoffs[4]
+  
+  newUserData$userGenre = 1
+  newUserData[which(newUserData$rownumber >= cutoffs[1] & newUserData$rownumber < cutoffs[2] ),]$userGenre = 2
+  newUserData[which(newUserData$rownumber >= cutoffs[2] & newUserData$rownumber < cutoffs[3] ),]$userGenre = 3
+  newUserData[which(newUserData$rownumber >= cutoffs[3] & newUserData$rownumber < cutoffs[4] ),]$userGenre = 4
+  newUserData[which(newUserData$rownumber >= cutoffs[4] & newUserData$rownumber < cutoffs[5] ),]$userGenre = 5
+  newUserData[which(newUserData$rownumber >= cutoffs[5]  ),]$userGenre = 6
+
+  newUserData$aliveStatus = 1
+
+  return(newUserData[c("userid", "userNumReviews", "aliveStatus", "userGenre")])
+}
+
+
+
+
+
+
+
+#Create numNewApps new apps, with app ids starting at lastIndexUsed
+#Final output has three columns: app id, their sampled lifetimes, and their alive status
+instantiateNewApps <- function(lastIndexUsed, numNewApps) {
+  newAppData = as.data.frame(matrix(lastIndexUsed,numNewApps,2 ))
+  newAppData$rownumber = 1:nrow(newAppData)
+  newAppData$appid = newAppData$V1 + newAppData$rownumber
+  #Sample their lifetimes:
+  #(lambda was initially estimated at the daily level. It needs to be reestimated at the weekly level.)
+  lambda_appLifetime = 7*.0024415
+  newAppData$appLifetime = rexp(nrow(newAppData), rate = lambda_appLifetime)
+  newAppData$aliveStatus = 1
+  #Sample their genre:
+  #Coalesced cats: Games, Entertainment (Ent, Music), Reference (Ref, Books, Biz, Educ, News), Lifestyle (Lifestyle, Social Net, Photo), Health/Travel (Health, Nav, Medical, Trav), Utilities (Ut. and prod)
+  genreProbVector = c(406, 159, 236, 729, 65, 259)
+
+  genreProbVector = genreProbVector/sum(genreProbVector)
+  cutoffs = genreProbVector*nrow(newAppData)
+  cutoffs[2] = cutoffs[2] + cutoffs[1]
+  cutoffs[3] = cutoffs[3] + cutoffs[2]
+  cutoffs[4] = cutoffs[4] + cutoffs[3] 
+  cutoffs[5] = cutoffs[5] + cutoffs[4]
+  
+  newAppData$appGenre = 1
+  newAppData[which(newAppData$rownumber >= cutoffs[1] & newAppData$rownumber < cutoffs[2] ),]$appGenre = 2
+  newAppData[which(newAppData$rownumber >= cutoffs[2] & newAppData$rownumber < cutoffs[3] ),]$appGenre = 3
+  newAppData[which(newAppData$rownumber >= cutoffs[3] & newAppData$rownumber < cutoffs[4] ),]$appGenre = 4
+  newAppData[which(newAppData$rownumber >= cutoffs[4] & newAppData$rownumber < cutoffs[5] ),]$appGenre = 5
+  newAppData[which(newAppData$rownumber >= cutoffs[5]  ),]$appGenre = 6
+
+
+  return(newAppData[c("appid", "appLifetime", "aliveStatus", "appGenre")])
+}
+
+
+
+
+
+N_U_t <- function(t) {
+  newNumUsers = 19.46*(t^2) + -1593.13*(t) + 39058.61
+  return(newNumUsers)
+}
+
+N_A_t <- function(t) {
+  newNumApps = 0.2307*(t^2) + -6.4042*(t) + 232.7242
+  return(newNumApps)
+}
 
 
 prepareData <-function(inputDataString) {
@@ -134,6 +360,11 @@ shift<-function(x,shift_by){
 
 
 
+
+
+#####################
+#### Scrap
+#####################
 
 
 userInitial_appCats = c(        "Education"         

@@ -86,27 +86,30 @@ setnames(usersWithMinTimestamps, "Group.1", "userid")
 setnames(usersWithMinTimestamps, "x", "userMinTime")
 
 
-#Calculate the number of (fractional) months since the first day:
-usersWithMinTimestamps$months = ((usersWithMinTimestamps$userMinTime - min_Time)/(24*60*60*30))
+#Calculate the number of (fractional) weeks since the first day:
+usersWithMinTimestamps$weeks = ((usersWithMinTimestamps$userMinTime - min_Time)/(24*60*60*7))
 
 #Calculate the number of users who start each day:
-usersWithMinTimestamps = as.data.frame(unique(usersWithMinTimestamps[c("userid", "months")]))
+usersWithMinTimestamps = as.data.frame(unique(usersWithMinTimestamps[c("userid", "weeks")]))
 usersWithMinTimestamps$dummyCol = 1
-usersWithMinTimestamps = aggregate(usersWithMinTimestamps$dummyCol, by = list(usersWithMinTimestamps$months), FUN = sum)
-setnames(usersWithMinTimestamps, "Group.1", "months")
+usersWithMinTimestamps = aggregate(usersWithMinTimestamps$dummyCol, by = list(usersWithMinTimestamps$weeks), FUN = sum)
+setnames(usersWithMinTimestamps, "Group.1", "weeks")
 setnames(usersWithMinTimestamps, "x", "numUsers")
 
-usersWithMinTimestamps = usersWithMinTimestamps[order(usersWithMinTimestamps$months),]
+usersWithMinTimestamps = usersWithMinTimestamps[order(usersWithMinTimestamps$weeks),]
 usersWithMinTimestamps$cumulativeNumUsers = cumsum(usersWithMinTimestamps$numUsers)
 
 #Remove times prior to the min time:
-usersWithMinTimestamps = usersWithMinTimestamps[which(usersWithMinTimestamps$months > 0),]
+usersWithMinTimestamps = usersWithMinTimestamps[which(usersWithMinTimestamps$weeks > 0),]
 
 #Plot the number of users over time:
 
-ggplot(data = usersWithMinTimestamps, aes(x = months , y = cumulativeNumUsers )) + geom_point() + labs(title = "Number of Users over Time, starting at July 10, 2008")
+ggplot(data = usersWithMinTimestamps, aes(x = weeks , y = cumulativeNumUsers )) + geom_point() + labs(title = "Number of Users over Time, starting at July 10, 2008")
 ggsave("ITunesData_numUsersOverTime.png")
 
+usersWithMinTimestamps$weeks_sq = (usersWithMinTimestamps$weeks)^2
+
+lm(usersWithMinTimestamps$cumulativeNumUsers ~ usersWithMinTimestamps$weeks + usersWithMinTimestamps$weeks_sq)
 
 #####
 ### B. number of apps over time:
@@ -119,24 +122,29 @@ appsWithMinTimestamps = aggregate(reviewMetaData$unixTimestamp, by = list(review
 setnames(appsWithMinTimestamps, "Group.1", "appid")
 setnames(appsWithMinTimestamps, "x", "appMinTime")
 
-appsWithMinTimestamps$months = ((appsWithMinTimestamps$appMinTime - min_Time)/(24*60*60))/30
+appsWithMinTimestamps$weeks = ((appsWithMinTimestamps$appMinTime - min_Time)/(24*60*60*7))
 
 
 #Calculate the number of apps that start each day:
-appsWithMinTimestamps = as.data.frame(unique(appsWithMinTimestamps[c("appid", "months")]))
+appsWithMinTimestamps = as.data.frame(unique(appsWithMinTimestamps[c("appid", "weeks")]))
 appsWithMinTimestamps$dummyCol = 1
-appsWithMinTimestamps = aggregate(appsWithMinTimestamps$dummyCol, by = list(appsWithMinTimestamps$months), FUN = sum)
-setnames(appsWithMinTimestamps, "Group.1", "months")
+appsWithMinTimestamps = aggregate(appsWithMinTimestamps$dummyCol, by = list(appsWithMinTimestamps$weeks), FUN = sum)
+setnames(appsWithMinTimestamps, "Group.1", "weeks")
 setnames(appsWithMinTimestamps, "x", "numApps")
 
-appsWithMinTimestamps = appsWithMinTimestamps[order(appsWithMinTimestamps$months),]
+appsWithMinTimestamps = appsWithMinTimestamps[order(appsWithMinTimestamps$weeks),]
 appsWithMinTimestamps$cumulativeNumApps = cumsum(appsWithMinTimestamps$numApps)
 
 
-appsWithMinTimestamps = appsWithMinTimestamps[which(appsWithMinTimestamps$months > 0),]
+appsWithMinTimestamps = appsWithMinTimestamps[which(appsWithMinTimestamps$weeks > 0),]
 
-ggplot(data = appsWithMinTimestamps, aes(x = months , y = cumulativeNumApps )) + geom_point() + labs(title = "Number of Apps over Time, starting at July 10, 2008")
+ggplot(data = appsWithMinTimestamps, aes(x = weeks , y = cumulativeNumApps )) + geom_point() + labs(title = "Number of Apps over Time, starting at July 10, 2008")
 ggsave("ITunesData_numAppsOverTime.png")
+
+appsWithMinTimestamps$weeks_sq = (appsWithMinTimestamps$weeks)^2
+
+
+lm(appsWithMinTimestamps$cumulativeNumApps ~ appsWithMinTimestamps$weeks + appsWithMinTimestamps$weeks_sq)
 
 
 #####################
