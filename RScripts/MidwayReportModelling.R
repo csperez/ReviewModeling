@@ -68,8 +68,10 @@ lastAppIndexUsed = 0
 lastUserIndexUsed = 0
 
   
+#Run the simulation for T_timesteps:
 for (t in 1:T_timesteps) {
   
+  #1. Create the new apps and users
   lastAppIndexUsed = numNewApps + lastAppIndexUsed
   lastUserIndexUsed = numNewUsers + lastUserIndexUsed
   
@@ -83,10 +85,14 @@ for (t in 1:T_timesteps) {
   currentApps = rbind(currentApps, newApps)
   currentUsers = rbind(currentUsers, newUsers)
   
+  #2. Update everyone's lifespan
+  
+  #3. Create edges based on PA within a genre, conditional on the users being alive.
+  #a. sample users' chosen next genre based on 1-MM
+  #b. assign an edge according to PA within that genre
+  #c. sample a rating based on users' rating histograms.
+  
 }
-
-
-
 
 
 
