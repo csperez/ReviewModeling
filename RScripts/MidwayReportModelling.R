@@ -53,7 +53,8 @@ inputMetaData = merge(inputMetaData, usersWithAtLeastMinReviews, by = c("userid"
 #### 1. Simulate the model
 #####################
 
-T_timesteps = 3
+T_timesteps = 100
+min_Time = 1215648000
 
 # At t = 0, create an initial number of nodes.
 numNewApps = round(N_A_t(0))
@@ -61,6 +62,32 @@ numNewUsers = round(N_U_t(0))
 
 currentApps = instantiateNewApps(0, numNewApps)
 currentUsers = instantiateNewUsers(0,numNewUsers)
+
+
+nextGenreUsers = currentUsers[which(currentUsers$userGenre==1),]
+nextGenreApps = currentApps[which(currentApps$appGenre==1),]
+
+nextGenreUsers$newAppIndex = sample(1:nrow(nextGenreApps), nrow(nextGenreUsers), replace = T)
+nextGenreUsers$newAppId = lapply(nextGenreUsers$newAppIndex, function(x) nextGenreApps[x,1])
+newEdges = nextGenreUsers[c("userid", "newAppId", "userGenre")]
+colnames(newEdges) = c("userid", "appid", "edgeGenre")
+newEdges$timestep = 0
+currentEdges = newEdges
+
+
+for (k in 2:6) {
+  nextGenreUsers = currentUsers[which(currentUsers$userGenre==k),]
+  nextGenreApps = currentApps[which(currentApps$appGenre==k),]
+  
+  nextGenreUsers$newAppIndex = sample(1:nrow(nextGenreApps), nrow(nextGenreUsers), replace = T)
+  nextGenreUsers$newAppId = lapply(nextGenreUsers$newAppIndex, function(x) nextGenreApps[x,1])
+  newEdges = nextGenreUsers[c("userid", "newAppId", "userGenre")]
+  colnames(newEdges) = c("userid", "appid", "edgeGenre")
+  newEdges$timestep = 0
+  currentEdges = rbind(currentEdges, newEdges)
+}
+
+
 
 #At further timesteps, we sample new users and apps and add them to the current collection.
 
@@ -70,7 +97,8 @@ lastUserIndexUsed = 0
   
 #Run the simulation for T_timesteps:
 for (t in 1:T_timesteps) {
-  
+  print("timestep: ")
+  print(t)
   #1. Create the new apps and users
   lastAppIndexUsed = numNewApps + lastAppIndexUsed
   lastUserIndexUsed = numNewUsers + lastUserIndexUsed
@@ -85,15 +113,74 @@ for (t in 1:T_timesteps) {
   currentApps = rbind(currentApps, newApps)
   currentUsers = rbind(currentUsers, newUsers)
   
-  #2. Update everyone's lifespan
   
-  #3. Create edges based on PA within a genre, conditional on the users being alive.
+  #2. Create edges based on PA within a genre, conditional on the users being alive.
   #a. sample users' chosen next genre based on 1-MM
+  aliveUsers = currentUsers[which(currentUsers$aliveStatus == 1),]
+  print("new alive users:")
+  print(nrow(aliveUsers))
+  aliveUsers$nextGenre = lapply(aliveUsers$userGenre, function(x) sample(c(1,2,3,4,5,6),1,prob=genreMarkovMatrix[,x])[1])
+
+  aliveApps = currentApps[which(currentApps$aliveStatus == 1),]
+  print("new alive apps:")
+  print(nrow(aliveApps))
+  
   #b. assign an edge according to PA within that genre
+  
+  #For now, join at random:
+  #(implement PA later)
+  for (k in 1:6) {
+    nextGenreUsers = aliveUsers[which(aliveUsers$nextGenre==k),]
+    nextGenreApps = aliveApps[which(aliveApps$appGenre==k),]
+    
+    nextGenreUsers$newAppIndex = sample(1:nrow(nextGenreApps), nrow(nextGenreUsers), replace = T)
+    nextGenreUsers$newAppId = lapply(nextGenreUsers$newAppIndex, function(x) nextGenreApps[x,1])
+    newEdges = nextGenreUsers[c("userid", "newAppId", "nextGenre")]
+    colnames(newEdges) = c("userid", "appid", "edgeGenre")
+    newEdges$timestep = t
+    currentEdges = rbind(currentEdges, newEdges)
+  }
+
+  
   #c. sample a rating based on users' rating histograms.
+  
+
+  #3. Update everyone's lifespan
+  currentApps$appLifetime = currentApps$appLifetime - 1
+  currentUsers$userNumReviews = currentUsers$userNumReviews - 1
+  
+  currentApps[which(currentApps$appLifetime <= 0),]$aliveStatus = 0
+  currentUsers[which(currentUsers$userNumReviews <= 0),]$aliveStatus = 0
   
 }
 
+currentEdges$edgeGenre = as.numeric(currentEdges$edgeGenre)
+currentEdges$appid = as.numeric(currentEdges$appid)
+
+write.csv(currentEdges, "SimulatedEdges_BasicModel.csv", row.names = F)
+
+
+#sample ratings per edge:
+#currentEdges$rating = lapply(currentEdges$edgeGenre, function(x) sample(c(1,2,3,4,5,6),1,prob=genreMarkovMatrix[,x])[1])
+
+
+#Compare time series of number of edges:
+inputMetaData$weeks = round(((inputMetaData$unixTimestamp - min_Time)/(24*60*60*7)))
+inputMetaData$edgeDummyCol = 1
+realEdgesPerWeek = aggregate(inputMetaData$edgeDummyCol, by = list(inputMetaData$weeks), FUN = sum)
+setnames(realEdgesPerWeek, "Group.1", "weekIndex")
+setnames(realEdgesPerWeek, "x", "numEdges")
+
+
+currentEdges$edgeDummyCol = 1
+simulatedEdgesPerWeek = aggregate(currentEdges$edgeDummyCol, by = list(currentEdges$timestep), FUN = sum)
+setnames(simulatedEdgesPerWeek, "Group.1", "weekIndex")
+setnames(simulatedEdgesPerWeek, "x", "numEdges")
+
+ggplot() + 
+  geom_line(data = realEdgesPerWeek[which(realEdgesPerWeek$weekIndex >= 50),], aes(x =weekIndex, y = numEdges ))  + 
+  geom_point(data = simulatedEdgesPerWeek, aes(x =weekIndex, y = numEdges )) 
+  labs(x = "weekIndex", title = "Number of edges per week")
 
 
 #####################
@@ -223,6 +310,43 @@ hist(usersWithTimestamps$userReviewTimeInterval[which(usersWithTimestamps$userRe
 #### 3. Auxiliary functions
 #####################
 
+### Create 1-MM matrix between genres:
+
+createGenreMMMatrix <- function() {
+  numGenres = 6
+  genreMarkovMatrix = matrix(0,numGenres,numGenres)
+
+  inputMetaData$coarseSubcat = 0
+  inputMetaData[which(inputMetaData$subcategory == "Games"),]$coarseSubcat = 1
+  inputMetaData[which(inputMetaData$subcategory == "Entertainment" | inputMetaData$subcategory == "Music"),]$coarseSubcat = 2
+  inputMetaData[which(inputMetaData$subcategory == "Reference" | inputMetaData$subcategory == "Books" | inputMetaData$subcategory == "Business" | inputMetaData$subcategory == "Education" | inputMetaData$subcategory == "News"),]$coarseSubcat = 3
+  inputMetaData[which(inputMetaData$subcategory == "Lifestyle" | inputMetaData$subcategory == "Socal Networking" | inputMetaData$subcategory == "Photo & Video"),]$coarseSubcat = 4
+  inputMetaData[which(inputMetaData$subcategory == "Health & Fitness" | inputMetaData$subcategory == "Navigation" | inputMetaData$subcategory == "Medical" | inputMetaData$subcategory == "Travel" ),]$coarseSubcat = 5
+  inputMetaData[which(inputMetaData$subcategory == "Utilities" | inputMetaData$subcategory == "Travel"),]$coarseSubcat = 6
+  
+  genreTransitionData = inputMetaData[which(inputMetaData$coarseSubcat > 0),]
+  
+  genreTransitions = merge(genreTransitionData[c("userid", "coarseSubcat", "unixTimestamp")], genreTransitionData[c("userid", "coarseSubcat", "unixTimestamp")], by = "userid")
+  
+  genreTransitions = genreTransitions[which(genreTransitions$unixTimestamp.y > genreTransitions$unixTimestamp.x),]
+  
+  genreTransitions$dummyCol = 1
+  genreTransitions = aggregate(genreTransitions$dummyCol, by = list(genreTransitions$coarseSubcat.x, genreTransitions$coarseSubcat.y), FUN = sum)
+
+return(genreMarkovMatrix)
+}
+
+for (i in 1:nrow(genreTransitions)) {
+  originEntry = genreTransitions[i,1]
+  destEntry = genreTransitions[i,2]
+  numTransitions = genreTransitions[i,3]
+  genreMarkovMatrix[destEntry, originEntry] = numTransitions
+}
+for (i in 1:numGenres) {
+  colSum = sum(genreMarkovMatrix[,i])
+  genreMarkovMatrix[,i] = genreMarkovMatrix[,i]/colSum
+}
+
 
 ## Create numNewUsers new users, with user ids starting at lastIndexUsed
 
@@ -254,7 +378,7 @@ instantiateNewUsers <- function(lastIndexUsed, numNewUsers) {
   
   newUserData <- newUserData[sample(1:nrow(newUserData)), ]
   
-  genreProbVector = c(3495,109+562, 163+90+4+499+121, 4516+642+1546, 57+3+6+29, 65, 259)
+  genreProbVector = c(3495, 109+562, 163+90+4+499+121, 4516+642+1546, 57+3+6+29, 1464+106 )
 
   genreProbVector = genreProbVector/sum(genreProbVector)
   cutoffs = genreProbVector*nrow(newUserData)
@@ -316,8 +440,6 @@ instantiateNewApps <- function(lastIndexUsed, numNewApps) {
 
 
 
-
-
 N_U_t <- function(t) {
   newNumUsers = 19.46*(t^2) + -1593.13*(t) + 39058.61
   return(newNumUsers)
@@ -364,7 +486,10 @@ shift<-function(x,shift_by){
   out
 }
 
-
+sampleDist_genreTransition = function(probVector) { 
+    sampledGenre = sample(x = c(1,2,3,4,5,6), 1, replace = T, prob = probVector) 
+    return(sampledGenre)
+}
 
 
 
