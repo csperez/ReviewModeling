@@ -412,15 +412,29 @@ Generative Model of ITunes App Reviews
 \end_layout
 
 \begin_layout Standard
-We now describe our initial attempt at a network evolution model of review
- activity in the ITunes App Store.
+We now describe our initial attempt at a network evolution model of ITunes
+ App Store review activity.
  Our model extends on prior work on microscopic graph constructors by considerin
 g two distinct classes of nodes, app and users, which form a bipartite graph.
  Furthermore, we consider the role of app genres and users' affiinity for
  specific genres (e.g.
  games, productivity, lifestyle) in the creation of edges beween them.
- Each edge in our graph corresponds to a user review of an app, and thus
- edges are only created by user nodes to app nodes.
+ Doing so allows us to capture latent 
+\begin_inset Quotes eld
+\end_inset
+
+personality
+\begin_inset Quotes erd
+\end_inset
+
+ types, which we also consider modeling via a mixture mode or LCA.
+ 
+\end_layout
+
+\begin_layout Standard
+It is important to note that each edge in our graph corresponds to a user
+ review of an app, and thus edges are only created by user nodes to app
+ nodes.
  App nodes sample finite lifetimes, which captures their tendency to 
 \begin_inset Quotes eld
 \end_inset
@@ -430,10 +444,7 @@ trend
 \end_inset
 
 , while users sample the total number of reviews they will emit.
-\end_layout
-
-\begin_layout Standard
-Our initial model is as follows:
+ Our initial model is as follows:
 \end_layout
 
 \begin_layout Standard
@@ -524,6 +535,28 @@ Our initial model is as follows:
 \end_inset
 
  .
+\end_layout
+
+\begin_layout Standard
+This first iteration of our model relies largely on sampling from histograms
+ computed from the data.
+ As such, we'd expect most macroscopic properties to mirror those of the
+ data, with one important exception: the resulting edge structure, which
+ we assume to be constructed by Preferential Attachment behavior (within
+ genre).
+ 
+\end_layout
+
+\begin_layout Section
+Simulation Results
+\end_layout
+
+\begin_layout Standard
+We simulate our model on a weekly basis, across 200 weeks of data.
+ We see that the expected macroscopic properties are indeed replicated,
+ but we also see that the resulting edge distribution, for which we imposed
+ a particular external generative assumption, also roughly matches that
+ of the data.
 \end_layout
 
 \end_body
