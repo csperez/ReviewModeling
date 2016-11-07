@@ -104,13 +104,15 @@ usersWithMinTimestamps = usersWithMinTimestamps[which(usersWithMinTimestamps$wee
 
 #Plot the number of users over time:
 
-ggplot(data = usersWithMinTimestamps, aes(x = weeks , y = cumulativeNumUsers )) + geom_point() + labs(title = "Number of Users over Time, starting at July 10, 2008")
+usersWithMinTimestamps$weeks_sq = (usersWithMinTimestamps$weeks)^2
+usersWithMinTimestamps$weeks_cu = (usersWithMinTimestamps$weeks)^3
+
+ggplot(data = usersWithMinTimestamps, aes(x = weeks , y = cumulativeNumUsers )) + geom_point() + labs(title = "Number of ITunes Users over Time, starting at July 10, 2008") +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,3,raw = T))
 ggsave("ITunesData_numUsersOverTime.png")
 
-usersWithMinTimestamps$weeks_sq = (usersWithMinTimestamps$weeks)^2
 
-lm(usersWithMinTimestamps$cumulativeNumUsers ~ usersWithMinTimestamps$weeks + usersWithMinTimestamps$weeks_sq)
-
+N_U_t_fit = lm(usersWithMinTimestamps$cumulativeNumUsers ~ 0 + usersWithMinTimestamps$weeks + usersWithMinTimestamps$weeks_sq + usersWithMinTimestamps$weeks_cu)
 #####
 ### B. number of apps over time:
 #####
@@ -138,13 +140,15 @@ appsWithMinTimestamps$cumulativeNumApps = cumsum(appsWithMinTimestamps$numApps)
 
 appsWithMinTimestamps = appsWithMinTimestamps[which(appsWithMinTimestamps$weeks > 0),]
 
-ggplot(data = appsWithMinTimestamps, aes(x = weeks , y = cumulativeNumApps )) + geom_point() + labs(title = "Number of Apps over Time, starting at July 10, 2008")
+ggplot(data = appsWithMinTimestamps, aes(x = weeks , y = cumulativeNumApps )) + geom_point() + labs(title = "Number of ITunes Apps over Time, starting at July 10, 2008") + 
+  geom_smooth(method = 'lm', formula = y ~ poly(x,3,raw = T))
 ggsave("ITunesData_numAppsOverTime.png")
 
 appsWithMinTimestamps$weeks_sq = (appsWithMinTimestamps$weeks)^2
+appsWithMinTimestamps$weeks_cu = (appsWithMinTimestamps$weeks)^3
 
 
-lm(appsWithMinTimestamps$cumulativeNumApps ~ appsWithMinTimestamps$weeks + appsWithMinTimestamps$weeks_sq)
+lm(appsWithMinTimestamps$cumulativeNumApps ~ 0 + appsWithMinTimestamps$weeks + appsWithMinTimestamps$weeks_sq + appsWithMinTimestamps$weeks_cu)
 
 
 #####################

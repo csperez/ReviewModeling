@@ -53,34 +53,39 @@ inputMetaData = merge(inputMetaData, usersWithAtLeastMinReviews, by = c("userid"
 #### 1. Simulate the model
 #####################
 
-T_timesteps = 100
+T_timesteps = 50
+T_0 = 1
 min_Time = 1215648000
 
+#Create the genre histogram:
+genreMarkovMatrix = createGenreMMMatrix()
+
+
 # At t = 0, create an initial number of nodes.
-numNewApps = round(N_A_t(0))
-numNewUsers = round(N_U_t(0))
+numNewApps = round(N_A_t(T_0))
+numNewUsers = round(N_U_t(T_0))
 
 currentApps = instantiateNewApps(0, numNewApps)
 currentUsers = instantiateNewUsers(0,numNewUsers)
-
+currentUsers$timestep = T_0
+currentApps$timestep = T_0
 
 nextGenreUsers = currentUsers[which(currentUsers$userGenre==1),]
 nextGenreApps = currentApps[which(currentApps$appGenre==1),]
 
 nextGenreUsers$newAppIndex = sample(1:nrow(nextGenreApps), nrow(nextGenreUsers), replace = T)
-nextGenreUsers$newAppId = lapply(nextGenreUsers$newAppIndex, function(x) nextGenreApps[x,1])
+nextGenreUsers$newAppId = as.numeric(lapply(nextGenreUsers$newAppIndex, function(x) nextGenreApps[x,1]))
 newEdges = nextGenreUsers[c("userid", "newAppId", "userGenre")]
 colnames(newEdges) = c("userid", "appid", "edgeGenre")
 newEdges$timestep = 0
 currentEdges = newEdges
-
 
 for (k in 2:6) {
   nextGenreUsers = currentUsers[which(currentUsers$userGenre==k),]
   nextGenreApps = currentApps[which(currentApps$appGenre==k),]
   
   nextGenreUsers$newAppIndex = sample(1:nrow(nextGenreApps), nrow(nextGenreUsers), replace = T)
-  nextGenreUsers$newAppId = lapply(nextGenreUsers$newAppIndex, function(x) nextGenreApps[x,1])
+  nextGenreUsers$newAppId = as.numeric(lapply(nextGenreUsers$newAppIndex, function(x) nextGenreApps[x,1]))
   newEdges = nextGenreUsers[c("userid", "newAppId", "userGenre")]
   colnames(newEdges) = c("userid", "appid", "edgeGenre")
   newEdges$timestep = 0
@@ -88,28 +93,35 @@ for (k in 2:6) {
 }
 
 
+#Update app degrees:
+#urrentEdges$appDummyCol = 1
+#newAppDegrees = aggregate(currentEdges$appDummyCol, by = list(currentEdges$appid), FUN = sum)
+
+#nextGenreUsers$testIndex = sample(newAppDegrees$Group.1,nrow(nextGenreUsers), prob = newAppDegrees$x, replace = T)
 
 #At further timesteps, we sample new users and apps and add them to the current collection.
 
 lastAppIndexUsed = 0
 lastUserIndexUsed = 0
 
-  
+
 #Run the simulation for T_timesteps:
-for (t in 1:T_timesteps) {
+for (t in T_0+1:T_timesteps) {
   print("timestep: ")
   print(t)
   #1. Create the new apps and users
   lastAppIndexUsed = numNewApps + lastAppIndexUsed
   lastUserIndexUsed = numNewUsers + lastUserIndexUsed
   
-  numNewApps = round(N_A_t(t))
-  numNewUsers = round(N_U_t(t))
+  numNewApps = round(N_A_t(t)) - numNewApps
+  numNewUsers = round(N_U_t(t)) - numNewUsers
   print("num new users:")
   print(numNewUsers)
   newApps = instantiateNewApps(lastAppIndexUsed, numNewApps)
   newUsers = instantiateNewUsers(lastUserIndexUsed,numNewUsers)
-
+  newUsers$timestep = t
+  newApps$timestep = t
+  
   currentApps = rbind(currentApps, newApps)
   currentUsers = rbind(currentUsers, newUsers)
   
@@ -120,42 +132,69 @@ for (t in 1:T_timesteps) {
   print("new alive users:")
   print(nrow(aliveUsers))
   aliveUsers$nextGenre = lapply(aliveUsers$userGenre, function(x) sample(c(1,2,3,4,5,6),1,prob=genreMarkovMatrix[,x])[1])
-
+  
   aliveApps = currentApps[which(currentApps$aliveStatus == 1),]
   print("new alive apps:")
   print(nrow(aliveApps))
   
   #b. assign an edge according to PA within that genre
-  
+  newApps$x = 1
+  setnames(newApps, "appid", "Group.1")
   #For now, join at random:
   #(implement PA later)
   for (k in 1:6) {
+    print("PA iteration")
+    print(k)
     nextGenreUsers = aliveUsers[which(aliveUsers$nextGenre==k),]
     nextGenreApps = aliveApps[which(aliveApps$appGenre==k),]
     
-    nextGenreUsers$newAppIndex = sample(1:nrow(nextGenreApps), nrow(nextGenreUsers), replace = T)
-    nextGenreUsers$newAppId = lapply(nextGenreUsers$newAppIndex, function(x) nextGenreApps[x,1])
+    #get the current alive apps' edges:
+    
+    tryCatch( {
+      #It may be the case that the new apps do not have an app with genre k
+      finalAliveAppDegrees = newApps[which(newApps$appGenre==k),][c("Group.1", "x")]
+      
+      tryCatch( {
+        #It may be the case that the currentEdge does not contain an edge with genre k
+        #(this is more applicable towards the beginning timesteps)
+    aliveAppDegrees = merge(currentEdges, nextGenreApps, by = "appid")
+    aliveAppDegrees$appDummyCol = 1
+    aliveAppDegrees = aggregate(aliveAppDegrees$appDummyCol, by = list(aliveAppDegrees$appid), FUN = sum)
+    
+    finalAliveAppDegrees = rbind(aliveAppDegrees, finalAliveAppDegrees)
+      }, error = function(e) {})
+    
+    #nextGenreUsers$newAppIndex = sample(1:nrow(nextGenreApps), nrow(nextGenreUsers), replace = T)
+    nextGenreUsers$newAppId = sample(finalAliveAppDegrees$Group.1,nrow(nextGenreUsers), prob = finalAliveAppDegrees$x, replace = T)
+    #nextGenreUsers$newAppId = lapply(nextGenreUsers$newAppIndex, function(x) nextGenreApps[x,1])
     newEdges = nextGenreUsers[c("userid", "newAppId", "nextGenre")]
     colnames(newEdges) = c("userid", "appid", "edgeGenre")
     newEdges$timestep = t
-    currentEdges = rbind(currentEdges, newEdges)
+    currentEdges = rbind(currentEdges, newEdges) 
+    }, error = function(e) {})
   }
-
+  
   
   #c. sample a rating based on users' rating histograms.
   
-
+  print("updating lifespans")
+  
   #3. Update everyone's lifespan
   currentApps$appLifetime = currentApps$appLifetime - 1
   currentUsers$userNumReviews = currentUsers$userNumReviews - 1
   
-  currentApps[which(currentApps$appLifetime <= 0),]$aliveStatus = 0
-  currentUsers[which(currentUsers$userNumReviews <= 0),]$aliveStatus = 0
+  tryCatch({currentApps[which(currentApps$appLifetime <= 0),]$aliveStatus = 0}, error = function(e) {})
+  tryCatch({currentUsers[which(currentUsers$userNumReviews <= 0),]$aliveStatus = 0}, error = function(e) {})
   
 }
 
 currentEdges$edgeGenre = as.numeric(currentEdges$edgeGenre)
 currentEdges$appid = as.numeric(currentEdges$appid)
+
+
+
+
+
 
 write.csv(currentEdges, "SimulatedEdges_BasicModel.csv", row.names = F)
 
@@ -178,10 +217,35 @@ setnames(simulatedEdgesPerWeek, "Group.1", "weekIndex")
 setnames(simulatedEdgesPerWeek, "x", "numEdges")
 
 ggplot() + 
-  geom_line(data = realEdgesPerWeek[which(realEdgesPerWeek$weekIndex >= 50),], aes(x =weekIndex, y = numEdges ))  + 
+  geom_line(data = realEdgesPerWeek, aes(x =weekIndex, y = numEdges ))  + 
   geom_point(data = simulatedEdgesPerWeek, aes(x =weekIndex, y = numEdges )) 
-  labs(x = "weekIndex", title = "Number of edges per week")
+labs(x = "weekIndex", title = "Number of edges per week")
 
+#Check: compare the number of users and apps:
+usersWithMinTimestamps$weeks = round(usersWithMinTimestamps$weeks)
+usersWithMinTimestamps = usersWithMinTimestamps[order(usersWithMinTimestamps$weeks),]
+usersWithMinTimestamps$cumulativeNumUsers = cumsum(usersWithMinTimestamps$numUsers)
+
+
+currentUsers$userDummyCol = 1
+simulatedUsersPerWeek = aggregate(currentUsers$userDummyCol, by = list(currentUsers$timestep, currentUsers$userid), FUN = sum)
+simulatedUsersPerWeek$userDummyCol = 1
+simulatedUsersPerWeek$x <- NULL
+simulatedUsersPerWeek = aggregate(simulatedUsersPerWeek$userDummyCol, by = list(simulatedUsersPerWeek$Group.1), FUN = sum)
+setnames(simulatedUsersPerWeek, "Group.1", "weekIndex")
+setnames(simulatedUsersPerWeek, "x", "numUsers")
+simulatedUsersPerWeek$cumulativeNumUsers = cumsum(simulatedUsersPerWeek$numUsers)
+
+ggplot() + 
+  geom_line(data = usersWithMinTimestamps, aes(x =weeks, y = cumulativeNumUsers ))  + 
+  geom_point(data = simulatedUsersPerWeek, aes(x =weekIndex, y = cumulativeNumUsers )) +
+labs(x = "weekIndex", title = "Number of users per week")
+
+
+usersWithMinTimestamps$weeks_sq = (usersWithMinTimestamps$weeks)^2
+usersWithMinTimestamps$weeks_cu = (usersWithMinTimestamps$weeks)^3
+
+lm(usersWithMinTimestamps$cumulativeNumUsers ~ 0 + usersWithMinTimestamps$weeks + usersWithMinTimestamps$weeks_sq + usersWithMinTimestamps$weeks_cu)
 
 #####################
 #### 2. Calculate histograms, MM's, and lamdbas for the Basic model
@@ -251,27 +315,27 @@ hist(usersWithTimestamps$userReviewTimeInterval[which(usersWithTimestamps$userRe
 
 ## Overall genre histogram:
 
- #            Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
- #               32                 12                  1                 94                 31                  6                  4                406 
- #     Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
- #                0                  0                 13                545                  3                128                  7                 43 
- #        Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
- #                1                  0                 86                 27                 55                 98                 22                 27 
- #        Utilities            Weather 
- #              232                  1 
+#            Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
+#               32                 12                  1                 94                 31                  6                  4                406 
+#     Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
+#                0                  0                 13                545                  3                128                  7                 43 
+#        Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
+#                1                  0                 86                 27                 55                 98                 22                 27 
+#        Utilities            Weather 
+#              232                  1 
 
 
 
 
 
- #            Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
- #              
- #     Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
- #                0                  0                                                
- #        Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
- #                1                  0                                                                               
- #        Utilities            Weather 
- #             
+#            Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
+#              
+#     Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
+#                0                  0                                                
+#        Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
+#                1                  0                                                                               
+#        Utilities            Weather 
+#             
 
 
 ### Users:
@@ -280,29 +344,29 @@ hist(usersWithTimestamps$userReviewTimeInterval[which(usersWithTimestamps$userRe
 #             Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
 #                90                  4                  0                499                109                166                  5               3495 
 ##      Games/Action    Games/Adventure       Games/Arcade        Games/Board         Games/Card       Games/Casino         Games/Dice  Games/Educational 
- #                                0                  0                  0                  0                  0                  0                  0 
- #     Games/Family        Games/Music       Games/Puzzle       Games/Racing Games/Role Playing   Games/Simulation       Games/Sports     Games/Strategy 
- ##                0                  0                  0                  0                  0                  0                  0                  0 
-  #    Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
-  ##               0                  0                 57               4516                  6                562                  3                121 
-   #      Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
-   #              0                  0               1546                106                163                642                  4                 29 
-   #      Utilities            Weather 
-   #           1464                 19 
+#                                0                  0                  0                  0                  0                  0                  0 
+#     Games/Family        Games/Music       Games/Puzzle       Games/Racing Games/Role Playing   Games/Simulation       Games/Sports     Games/Strategy 
+##                0                  0                  0                  0                  0                  0                  0                  0 
+#    Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
+##               0                  0                 57               4516                  6                562                  3                121 
+#      Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
+#              0                  0               1546                106                163                642                  4                 29 
+#      Utilities            Weather 
+#           1464                 19 
 
 
 #             Books           Business           Catalogs          Education      Entertainment            Finance       Food & Drink              Games 
 #                90                  4                  0                499                109                166                  5               3495 
 ##      Games/Action    Games/Adventure       Games/Arcade        Games/Board         Games/Card       Games/Casino         Games/Dice  Games/Educational 
- #                                0                  0                  0                  0                  0                  0                  0 
- #     Games/Family        Games/Music       Games/Puzzle       Games/Racing Games/Role Playing   Games/Simulation       Games/Sports     Games/Strategy 
- ##                0                  0                  0                  0                  0                  0                  0                  0 
-  #    Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
-  ##               0                  0                 57               4516                  6                562                  3                121 
-   #      Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
-   #              0                  0               1546                106                163                642                  4                 29 
-   #      Utilities            Weather 
-   #           1464                 19 
+#                                0                  0                  0                  0                  0                  0                  0 
+#     Games/Family        Games/Music       Games/Puzzle       Games/Racing Games/Role Playing   Games/Simulation       Games/Sports     Games/Strategy 
+##                0                  0                  0                  0                  0                  0                  0                  0 
+#    Games/Trivia         Games/Word   Health & Fitness          Lifestyle            Medical              Music         Navigation               News 
+##               0                  0                 57               4516                  6                562                  3                121 
+#      Newsstand          NoneFound      Photo & Video       Productivity          Reference  Social Networking             Sports             Travel 
+#              0                  0               1546                106                163                642                  4                 29 
+#      Utilities            Weather 
+#           1464                 19 
 
 
 
@@ -313,9 +377,12 @@ hist(usersWithTimestamps$userReviewTimeInterval[which(usersWithTimestamps$userRe
 ### Create 1-MM matrix between genres:
 
 createGenreMMMatrix <- function() {
+  
+  
+  
   numGenres = 6
   genreMarkovMatrix = matrix(0,numGenres,numGenres)
-
+  
   inputMetaData$coarseSubcat = 0
   inputMetaData[which(inputMetaData$subcategory == "Games"),]$coarseSubcat = 1
   inputMetaData[which(inputMetaData$subcategory == "Entertainment" | inputMetaData$subcategory == "Music"),]$coarseSubcat = 2
@@ -332,20 +399,24 @@ createGenreMMMatrix <- function() {
   
   genreTransitions$dummyCol = 1
   genreTransitions = aggregate(genreTransitions$dummyCol, by = list(genreTransitions$coarseSubcat.x, genreTransitions$coarseSubcat.y), FUN = sum)
-
-return(genreMarkovMatrix)
+  
+  
+  for (i in 1:nrow(genreTransitions)) {
+    originEntry = genreTransitions[i,1]
+    destEntry = genreTransitions[i,2]
+    numTransitions = genreTransitions[i,3]
+    genreMarkovMatrix[destEntry, originEntry] = numTransitions
+  }
+  for (i in 1:numGenres) {
+    colSum = sum(genreMarkovMatrix[,i])
+    genreMarkovMatrix[,i] = genreMarkovMatrix[,i]/colSum
+  }
+  
+  
+  
+  return(genreMarkovMatrix)
 }
 
-for (i in 1:nrow(genreTransitions)) {
-  originEntry = genreTransitions[i,1]
-  destEntry = genreTransitions[i,2]
-  numTransitions = genreTransitions[i,3]
-  genreMarkovMatrix[destEntry, originEntry] = numTransitions
-}
-for (i in 1:numGenres) {
-  colSum = sum(genreMarkovMatrix[,i])
-  genreMarkovMatrix[,i] = genreMarkovMatrix[,i]/colSum
-}
 
 
 ## Create numNewUsers new users, with user ids starting at lastIndexUsed
@@ -366,11 +437,11 @@ instantiateNewUsers <- function(lastIndexUsed, numNewUsers) {
   cutoffs[5] = cutoffs[5] + cutoffs[4]
   
   newUserData$userNumReviews = 1
-  newUserData[which(newUserData$rownumber >= cutoffs[1] & newUserData$rownumber < cutoffs[2] ),]$userNumReviews = 2
-  newUserData[which(newUserData$rownumber >= cutoffs[2] & newUserData$rownumber < cutoffs[3] ),]$userNumReviews = 3
-  newUserData[which(newUserData$rownumber >= cutoffs[3] & newUserData$rownumber < cutoffs[4] ),]$userNumReviews = 4
-  newUserData[which(newUserData$rownumber >= cutoffs[4] & newUserData$rownumber < cutoffs[5] ),]$userNumReviews = 5
-  newUserData[which(newUserData$rownumber >= cutoffs[5]  ),]$userNumReviews = 6
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[1] & newUserData$rownumber < cutoffs[2] ),]$userNumReviews = 2}, error = function(e) {})
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[2] & newUserData$rownumber < cutoffs[3] ),]$userNumReviews = 3}, error = function(e) {})
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[3] & newUserData$rownumber < cutoffs[4] ),]$userNumReviews = 4}, error = function(e) {})
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[4] & newUserData$rownumber < cutoffs[5] ),]$userNumReviews = 5}, error = function(e) {})
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[5]  ),]$userNumReviews = 6}, error = function(e) {})
   
   
   #Sample their genre:
@@ -379,7 +450,7 @@ instantiateNewUsers <- function(lastIndexUsed, numNewUsers) {
   newUserData <- newUserData[sample(1:nrow(newUserData)), ]
   
   genreProbVector = c(3495, 109+562, 163+90+4+499+121, 4516+642+1546, 57+3+6+29, 1464+106 )
-
+  
   genreProbVector = genreProbVector/sum(genreProbVector)
   cutoffs = genreProbVector*nrow(newUserData)
   cutoffs[2] = cutoffs[2] + cutoffs[1]
@@ -388,14 +459,14 @@ instantiateNewUsers <- function(lastIndexUsed, numNewUsers) {
   cutoffs[5] = cutoffs[5] + cutoffs[4]
   
   newUserData$userGenre = 1
-  newUserData[which(newUserData$rownumber >= cutoffs[1] & newUserData$rownumber < cutoffs[2] ),]$userGenre = 2
-  newUserData[which(newUserData$rownumber >= cutoffs[2] & newUserData$rownumber < cutoffs[3] ),]$userGenre = 3
-  newUserData[which(newUserData$rownumber >= cutoffs[3] & newUserData$rownumber < cutoffs[4] ),]$userGenre = 4
-  newUserData[which(newUserData$rownumber >= cutoffs[4] & newUserData$rownumber < cutoffs[5] ),]$userGenre = 5
-  newUserData[which(newUserData$rownumber >= cutoffs[5]  ),]$userGenre = 6
-
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[1] & newUserData$rownumber < cutoffs[2] ),]$userGenre = 2}, error = function(e) {})
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[2] & newUserData$rownumber < cutoffs[3] ),]$userGenre = 3}, error = function(e) {})
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[3] & newUserData$rownumber < cutoffs[4] ),]$userGenre = 4}, error = function(e) {})
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[4] & newUserData$rownumber < cutoffs[5] ),]$userGenre = 5}, error = function(e) {})
+  tryCatch({newUserData[which(newUserData$rownumber >= cutoffs[5]  ),]$userGenre = 6}, error = function(e) {})
+  
   newUserData$aliveStatus = 1
-
+  
   return(newUserData[c("userid", "userNumReviews", "aliveStatus", "userGenre")])
 }
 
@@ -419,7 +490,7 @@ instantiateNewApps <- function(lastIndexUsed, numNewApps) {
   #Sample their genre:
   #Coalesced cats: Games, Entertainment (Ent, Music), Reference (Ref, Books, Biz, Educ, News), Lifestyle (Lifestyle, Social Net, Photo), Health/Travel (Health, Nav, Medical, Trav), Utilities (Ut. and prod)
   genreProbVector = c(406, 159, 236, 729, 65, 259)
-
+  
   genreProbVector = genreProbVector/sum(genreProbVector)
   cutoffs = genreProbVector*nrow(newAppData)
   cutoffs[2] = cutoffs[2] + cutoffs[1]
@@ -428,25 +499,25 @@ instantiateNewApps <- function(lastIndexUsed, numNewApps) {
   cutoffs[5] = cutoffs[5] + cutoffs[4]
   
   newAppData$appGenre = 1
-  newAppData[which(newAppData$rownumber >= cutoffs[1] & newAppData$rownumber < cutoffs[2] ),]$appGenre = 2
-  newAppData[which(newAppData$rownumber >= cutoffs[2] & newAppData$rownumber < cutoffs[3] ),]$appGenre = 3
-  newAppData[which(newAppData$rownumber >= cutoffs[3] & newAppData$rownumber < cutoffs[4] ),]$appGenre = 4
-  newAppData[which(newAppData$rownumber >= cutoffs[4] & newAppData$rownumber < cutoffs[5] ),]$appGenre = 5
-  newAppData[which(newAppData$rownumber >= cutoffs[5]  ),]$appGenre = 6
-
-
+  tryCatch({newAppData[which(newAppData$rownumber >= cutoffs[1] & newAppData$rownumber < cutoffs[2] ),]$appGenre = 2}, error = function(e) {})
+  tryCatch({newAppData[which(newAppData$rownumber >= cutoffs[2] & newAppData$rownumber < cutoffs[3] ),]$appGenre = 3}, error = function(e) {})
+  tryCatch({newAppData[which(newAppData$rownumber >= cutoffs[3] & newAppData$rownumber < cutoffs[4] ),]$appGenre = 4}, error = function(e) {})
+  tryCatch({newAppData[which(newAppData$rownumber >= cutoffs[4] & newAppData$rownumber < cutoffs[5] ),]$appGenre = 5}, error = function(e) {})
+  tryCatch({newAppData[which(newAppData$rownumber >= cutoffs[5]  ),]$appGenre = 6}, error = function(e) {})
+  
+  
   return(newAppData[c("appid", "appLifetime", "aliveStatus", "appGenre")])
 }
 
 
 
 N_U_t <- function(t) {
-  newNumUsers = 19.46*(t^2) + -1593.13*(t) + 39058.61
+  newNumUsers = .1206*(t^3) +  -15.7061*(t^2) + 1087*(t)
   return(newNumUsers)
 }
 
 N_A_t <- function(t) {
-  newNumApps = 0.2307*(t^2) + -6.4042*(t) + 232.7242
+  newNumApps = 0.0005059*(t^3) + 0.0773953*(t^2) + 6.2325502*(t)
   return(newNumApps)
 }
 
@@ -487,8 +558,8 @@ shift<-function(x,shift_by){
 }
 
 sampleDist_genreTransition = function(probVector) { 
-    sampledGenre = sample(x = c(1,2,3,4,5,6), 1, replace = T, prob = probVector) 
-    return(sampledGenre)
+  sampledGenre = sample(x = c(1,2,3,4,5,6), 1, replace = T, prob = probVector) 
+  return(sampledGenre)
 }
 
 
@@ -496,6 +567,46 @@ sampleDist_genreTransition = function(probVector) {
 #####################
 #### Scrap
 #####################
+
+for (t in T_0+1:T_timesteps) {
+  print("timestep: ")
+  print(t)
+  #1. Create the new apps and users
+  lastAppIndexUsed = numNewApps + lastAppIndexUsed
+  lastUserIndexUsed = numNewUsers + lastUserIndexUsed
+  
+  numNewApps = round(N_A_t(t)) - numNewApps
+  numNewUsers = round(N_U_t(t)) - numNewUsers
+  print("num new users:")
+  print(numNewUsers)
+  newApps = instantiateNewApps(lastAppIndexUsed, numNewApps)
+  newUsers = instantiateNewUsers(lastUserIndexUsed,numNewUsers)
+  newUsers$timestep = t
+  newApps$timestep = t
+  
+  currentApps = rbind(currentApps, newApps)
+  currentUsers = rbind(currentUsers, newUsers)
+  
+  print("Current total num simulated users:")
+  print(nrow(currentUsers))
+  print("Predicted num users:")
+  print(round(N_U_t(t)))
+}
+
+
+
+
+testNumUsersSimulation = as.data.frame(inputMetaData[1,])
+testNumUsersSimulation$numUsers = 0
+testNumUsersSimulation$timestep = 0
+testNumUsersSimulation = testNumUsersSimulation[c("numUsers", "timestep")]
+for (i in 1:200) {
+  print(i)
+  tempResult = as.data.frame(testNumUsersSimulation[1,])
+  tempResult$numUsers = N_U_t(i)
+  tempResult$timestep = i
+  testNumUsersSimulation = rbind(testNumUsersSimulation, tempResult)
+}
 
 
 userInitial_appCats = c(        "Education"         
