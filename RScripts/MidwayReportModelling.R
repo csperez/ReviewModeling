@@ -5,11 +5,11 @@ library(data.table)
 library(ggplot2)
 library(sqldf)
 library(MASS)
-setwd('/Users/cperez/Desktop/iTunesData')
+setwd('/Users/Chris/Downloads/iTunesData')
 
 inputMetaData = prepareData("itunes3_reviews_meta.csv")
 #appsWithCategories = read.csv("appCategories.csv")
-N_minReviews = 2
+N_minReviews = 1
 
 appCatsSensorTower = read.csv("appCategories_SensorTowerOutput copy.csv")
 appCatsSensorTower = as.data.frame(unique(appCatsSensorTower))
@@ -53,7 +53,7 @@ inputMetaData = merge(inputMetaData, usersWithAtLeastMinReviews, by = c("userid"
 #### 1. Simulate the model
 #####################
 
-T_timesteps = 50
+T_timesteps = 200
 T_0 = 1
 min_Time = 1215648000
 
@@ -62,8 +62,8 @@ genreMarkovMatrix = createGenreMMMatrix()
 
 
 # At t = 0, create an initial number of nodes.
-numNewApps = round(N_A_t(T_0))
-numNewUsers = round(N_U_t(T_0))
+numNewApps = round(N_A_t(T_0) - N_A_t(T_0 - 1))
+numNewUsers = round(N_U_t(T_0) - N_U_t(T_0 - 1))
 
 currentApps = instantiateNewApps(0, numNewApps)
 currentUsers = instantiateNewUsers(0,numNewUsers)
@@ -113,8 +113,8 @@ for (t in T_0+1:T_timesteps) {
   lastAppIndexUsed = numNewApps + lastAppIndexUsed
   lastUserIndexUsed = numNewUsers + lastUserIndexUsed
   
-  numNewApps = round(N_A_t(t)) - numNewApps
-  numNewUsers = round(N_U_t(t)) - numNewUsers
+  numNewApps = round(N_A_t(t) - N_A_t(t - 1))
+  numNewUsers = round(N_U_t(t) - N_U_t(t -1))
   print("num new users:")
   print(numNewUsers)
   newApps = instantiateNewApps(lastAppIndexUsed, numNewApps)
@@ -217,9 +217,9 @@ setnames(simulatedEdgesPerWeek, "Group.1", "weekIndex")
 setnames(simulatedEdgesPerWeek, "x", "numEdges")
 
 ggplot() + 
-  geom_line(data = realEdgesPerWeek, aes(x =weekIndex, y = numEdges ))  + 
-  geom_point(data = simulatedEdgesPerWeek, aes(x =weekIndex, y = numEdges )) 
-labs(x = "weekIndex", title = "Number of edges per week")
+  geom_line(data = realEdgesPerWeek[which(realEdgesPerWeek$weekIndex <= 195),], aes(x =weekIndex, y = numEdges, colour = "Data"))  + 
+  geom_point(data = simulatedEdgesPerWeek[which(simulatedEdgesPerWeek$weekIndex <= 195),], aes(x =weekIndex, y = numEdges, colour = "Simulated" )) +
+labs(x = "weekIndex", title = "Weekly Number of New Edges - Basic Model") + scale_colour_manual("", breaks = c("Data", "Simulated"), values = c("red", "blue"))
 
 #Check: compare the number of users and apps:
 usersWithMinTimestamps$weeks = round(usersWithMinTimestamps$weeks)
@@ -447,7 +447,11 @@ instantiateNewUsers <- function(lastIndexUsed, numNewUsers) {
   #Sample their genre:
   #Coalesced cats: Games, Entertainment (Ent, Music), Reference (Ref, Books, Biz, Educ, News), Lifestyle (Lifestyle, Social Net, Photo), Health/Travel (Health, Nav, Medical, Trav), Utilities (Ut. and prod)
   
+  print("before sampling")
+  print(nrow(newUserData))
   newUserData <- newUserData[sample(1:nrow(newUserData)), ]
+  print("after sampling")
+  print(nrow(newUserData))
   
   genreProbVector = c(3495, 109+562, 163+90+4+499+121, 4516+642+1546, 57+3+6+29, 1464+106 )
   
@@ -575,12 +579,17 @@ for (t in T_0+1:T_timesteps) {
   lastAppIndexUsed = numNewApps + lastAppIndexUsed
   lastUserIndexUsed = numNewUsers + lastUserIndexUsed
   
-  numNewApps = round(N_A_t(t)) - numNewApps
-  numNewUsers = round(N_U_t(t)) - numNewUsers
+  numNewApps = round(N_A_t(t) - N_A_t(t - 1))
+  numNewUsers = round(N_U_t(t) - N_U_t(t -1))
+  userDelta = N_U_t(t) - N_U_t(t-1)
   print("num new users:")
   print(numNewUsers)
+  print("user delta")
+  print(userDelta)
   newApps = instantiateNewApps(lastAppIndexUsed, numNewApps)
   newUsers = instantiateNewUsers(lastUserIndexUsed,numNewUsers)
+  print("num newUsers variable afeter instantiate")
+  print(numNewUsers)
   newUsers$timestep = t
   newApps$timestep = t
   
