@@ -1,0 +1,530 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+
+
+% if you need to pass options to natbib, use, e.g.:
+% \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading nips_2016
+%
+% to avoid loading the natbib package, add option nonatbib:
+% \usepackage[nonatbib]{nips_2016}
+
+\usepackage{nips_2016}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+% \usepackage[final]{nips_2016}
+
+% allow utf-8 input
+% use 8-bit T1 fonts
+% hyperlinks
+\usepackage{url}% simple URL typesetting
+\usepackage{booktabs}% professional-quality tables
+\usepackage{amsfonts}% blackboard math symbols
+\usepackage{nicefrac}% compact symbols for 1/2, etc.
+\usepackage{microtype}% microtypography
+
+\title{Evaluating Microscopic Graphical Models}
+
+% The \author macro works with any number of authors. There are two
+% commands used to separate the names and addresses of multiple
+% authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to
+% break the lines. Using \AND forces a line break at that point. So,
+% if LaTeX puts 3 of 4 authors names on the first line, and the last
+% on the second line, try using \AND instead of \And before the third
+% author name.
+
+\author{
+  David S.~Hippocampus\thanks{Use footnote for providing further
+    information about author (webpage, alternative
+    address)---\emph{not} for acknowledging funding agencies.} \\
+  Department of Computer Science\\
+  Cranberry-Lemon University\\
+  Pittsburgh, PA 15213 \\
+  \texttt{hippo@cs.cranberry-lemon.edu} \\
+  %% examples of more authors
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \AND
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+}
+\end_preamble
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding T1
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref true
+\pdf_bookmarks false
+\pdf_bookmarksnumbered false
+\pdf_bookmarksopen false
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder false
+\pdf_colorlinks false
+\pdf_backref section
+\pdf_pdfusetitle false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 0
+\use_package cancel 0
+\use_package esint 1
+\use_package mathdots 0
+\use_package mathtools 0
+\use_package mhchem 0
+\use_package stackrel 0
+\use_package stmaryrd 0
+\use_package undertilde 0
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+% 
+\backslash
+nipsfinalcopy is no longer used
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+maketitle
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Abstract
+Our project aims to better understand online reviewer arrival and rating
+ activity through generative graphical models.
+ These models posit rules and distributional assumptions over latent variables
+ underlying agent activity.
+ Past research has utilized model likelihood to compare such models, and
+ we will explore extensions to this approach.
+ We will focus on reviews of Apple App Store mobile phone applications,
+ and, if time allows, other contexts in which our approach is applicable.
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+%%The abstract paragraph should be indented 
+\backslash
+nicefrac{1}{2}~inch
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+%%(3~picas) on both the left- and right-hand margins.
+ Use 10~point
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+%%type, with a vertical spacing (leading) of 11~points.
+  The word
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+%%
+\backslash
+textbf{Abstract} must be centered, bold, and in point size 12.
+ Two
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+%%line spaces precede the abstract.
+ The abstract must be limited to
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+%%one paragraph.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Project Outline
+\end_layout
+
+\begin_layout Subsection
+Introduction
+\end_layout
+
+\begin_layout Standard
+The modeling of social network graph formation has been roughly split into
+ "macroscopic" and "microscopic" approaches, the former of which aims to
+ replicate observed global properties of the network, while the latter aims
+ to specify plausible rules regarding node and edge formation [1].
+ We wish to study microscopic models and subsequently design a satisfactory
+ model for describing online reviewing activity.
+\end_layout
+
+\begin_layout Subsection
+Modeling Reviewer Entry and Behavior
+\end_layout
+
+\begin_layout Standard
+Our main goal will be to arrive at a satisfactory set of rules, distributional
+ assumptions, and relationships between latent and observed parameters regarding
+ online reviewing activity.
+ Past "microscopic" research has taken this approach, but our context differs
+ in unique ways.
+ For one, the particular relationships we've decided to focus on (reviews)
+ are mostly uni-directional (reviewers-to-apps).
+ Also, reviewing activity itself is sufficiently distinct from social interactio
+n to warrant different rules and parameters regarding edge formation.
+\end_layout
+
+\begin_layout Subsection
+Data
+\end_layout
+
+\begin_layout Standard
+Using web-scraping tools, we've created a dataset of mobile phone application
+ reviews from the Apple App Store.
+ Each row in our dataset contains a timestamped individual user review,
+ including their username, the name of the app they've used, the particular
+ rating they gave the app, and the text of their review.
+ Reviews in the dataset extend to 2012, encompassing all apps we were able
+ to find publicly.
+ This excludes any private "B2B" enterprise apps which are utilized internally
+ by corporations.
+\end_layout
+
+\begin_layout Subsection
+Evaluation
+\end_layout
+
+\begin_layout Standard
+We will explore extensions to the likelihood-comparison approach for microscopic
+ graphical models [1].
+ Although past researchers have argued that models with higher likelihood
+ are "better" or better-suited for describing a social network, we would
+ like to be more rigorous and precise about how this likelihood-comparison
+ among models is made.
+\end_layout
+
+\begin_layout Subsection
+Division of Work
+\end_layout
+
+\begin_layout Standard
+We plan to jointly brainstorm new iterations of our graphical models and
+ extensions to likelihood-comparison evaluation.
+ The actual implementation of iterations will be distributed among us, according
+ to our strengths.
+ We plan to use Python and R for our coding, analysis, estimation, and evaluatio
+n tasks.
+ Both of us are proficient with both tools, so we will assign smaller tasks
+ in roughly even workloads.
+ For now, a tentative split of labor could be that Christian focuses on
+ building the codebase for the graph formation rules, while Meghanath focuses
+ on writing code for the likelihood-comparison evaluation.
+\end_layout
+
+\begin_layout Subsection
+Timeline
+\end_layout
+
+\begin_layout Standard
+By the midterm report, we hope to have established a satisfactory pipeline
+ for evaluating model iterations, such that we can implement and test distributi
+onal choices and rules efficiently.
+ The baseline for doing this is a mere comparison of model likelihood [1].
+ By the end of the semester, we hope to extend this evaluation approach
+ and, as an application, arrive at a satisfactory model of online review
+ activity.
+\end_layout
+
+\begin_layout Subsection
+References
+\end_layout
+
+\begin_layout Standard
+1.
+ J.
+ Leskovec, L.
+ Backstrom, R.
+ Kumar, and A.
+ Tomkins.
+ 
+\shape italic
+Microscopic evolution of social networks.
+
+\shape default
+ In 
+\shape italic
+KDD '08
+\shape default
+, pages 462–470, 2008
+\end_layout
+
+\begin_layout Section
+Generative Model of ITunes App Reviews
+\end_layout
+
+\begin_layout Standard
+We now describe our initial attempt at a network evolution model of review
+ activity in the ITunes App Store.
+ Our model extends on prior work on microscopic graph constructors by considerin
+g two distinct classes of nodes, app and users, which form a bipartite graph.
+ Furthermore, we consider the role of app genres and users' affiinity for
+ specific genres (e.g.
+ games, productivity, lifestyle) in the creation of edges beween them.
+ Each edge in our graph corresponds to a user review of an app, and thus
+ edges are only created by user nodes to app nodes.
+ App nodes sample finite lifetimes, which captures their tendency to 
+\begin_inset Quotes eld
+\end_inset
+
+trend
+\begin_inset Quotes erd
+\end_inset
+
+, while users sample the total number of reviews they will emit.
+\end_layout
+
+\begin_layout Standard
+Our initial model is as follows:
+\end_layout
+
+\begin_layout Standard
+1.
+ App nodes are generated according to the app-generation function 
+\begin_inset Formula $N_{A}(t)$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+2.
+ Apps sample a genre 
+\begin_inset Formula $k$
+\end_inset
+
+ from an empirical histogram 
+\begin_inset Formula $h_{g,app}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+3.
+ Apps sample a lifetime 
+\begin_inset Formula $a$
+\end_inset
+
+ from a fitted exponential function 
+\begin_inset Formula $exp(\lambda)$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+4.
+ User nodes are generated according to a user-generation function 
+\begin_inset Formula $N_{U}(t)$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+5.
+ Users sample a genre 
+\begin_inset Formula $k$
+\end_inset
+
+ from an empirical histogram 
+\begin_inset Formula $h_{g,user}$
+\end_inset
+
+ and a lifetime (number of reviews) 
+\begin_inset Formula $n_{u}$
+\end_inset
+
+ from a histogram 
+\begin_inset Formula $h_{n,user}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+6.
+ Users create their first edge according proportional to the degree of the
+ (active) nodes within the genre (Preferential Attachment)
+\end_layout
+
+\begin_layout Standard
+7.
+ At subsequent time steps, users first sample a next genre 
+\begin_inset Formula $k'$
+\end_inset
+
+ according to a 1-MM process of transitions between genres.
+\end_layout
+
+\begin_layout Standard
+8.
+ Then, users create an edge to an app in the new genre according to PA,
+ provided they have not reached their limit on edges created 
+\begin_inset Formula $n_{u}$
+\end_inset
+
+ .
+\end_layout
+
+\end_body
+\end_document

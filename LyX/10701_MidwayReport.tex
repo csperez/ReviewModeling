@@ -1,0 +1,110 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+% \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading nips_2016
+%
+% to avoid loading the natbib package, add option nonatbib:
+% \usepackage[nonatbib]{nips_2016}
+
+\usepackage{nips_2016}
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+% \usepackage[final]{nips_2016}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+
+\title{Evaluating Microscopic Graphical Models}
+
+% The \author macro works with any number of authors. There are two
+% commands used to separate the names and addresses of multiple
+% authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to
+% break the lines. Using \AND forces a line break at that point. So,
+% if LaTeX puts 3 of 4 authors names on the first line, and the last
+% on the second line, try using \AND instead of \And before the third
+% author name.
+
+\author{
+  David S.~Hippocampus\thanks{Use footnote for providing further
+    information about author (webpage, alternative
+    address)---\emph{not} for acknowledging funding agencies.} \\
+  Department of Computer Science\\
+  Cranberry-Lemon University\\
+  Pittsburgh, PA 15213 \\
+  \texttt{hippo@cs.cranberry-lemon.edu} \\
+  %% examples of more authors
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \AND
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+}
+
+\begin{document}
+% \nipsfinalcopy is no longer used
+
+\maketitle
+
+\begin{abstract}
+ Our project aims to better understand online reviewer arrival and rating activity through generative graphical models. These models posit rules and distributional assumptions over latent variables underlying agent activity. Past research has utilized model likelihood to compare such models, and we will explore extensions to this approach. We will focus on reviews of Apple App Store mobile phone applications, and, if time allows, other contexts in which our approach is applicable.
+  %%The abstract paragraph should be indented \nicefrac{1}{2}~inch
+  %%(3~picas) on both the left- and right-hand margins. Use 10~point
+  %%type, with a vertical spacing (leading) of 11~points.  The word
+  %%\textbf{Abstract} must be centered, bold, and in point size 12. Two
+  %%line spaces precede the abstract. The abstract must be limited to
+  %%one paragraph.
+\end{abstract}
+
+\section{Project Outline}
+ 
+\subsection{Introduction}
+
+The modeling of social network graph formation has been roughly split into "macroscopic" and "microscopic" approaches, the former of which aims to replicate observed global properties of the network, while the latter aims to specify plausible rules regarding node and edge formation [1]. We wish to study microscopic models and subsequently design a satisfactory model for describing online reviewing activity.
+
+\subsection{Modeling Reviewer Entry and Behavior}
+
+Our main goal will be to arrive at a satisfactory set of rules, distributional assumptions, and relationships between latent and observed parameters regarding online reviewing activity. Past "microscopic" research has taken this approach, but our context differs in unique ways. For one, the particular relationships we've decided to focus on (reviews) are mostly uni-directional (reviewers-to-apps). Also, reviewing activity itself is sufficiently distinct from social interaction to warrant different rules and parameters regarding edge formation. 
+
+\subsection{Data}
+Using web-scraping tools, we've created a dataset of mobile phone application reviews from the Apple App Store. Each row in our dataset contains a timestamped individual user review, including their username, the name of the app they've used, the particular rating they gave the app, and the text of their review. Reviews in the dataset extend to 2012, encompassing all apps we were able to find publicly. This excludes any private "B2B" enterprise apps which are utilized internally by corporations.
+
+\subsection{Evaluation}
+We will explore extensions to the likelihood-comparison approach for microscopic graphical models [1]. Although past researchers have argued that models with higher likelihood are "better" or better-suited for describing a social network, we would like to be more rigorous and precise about how this likelihood-comparison among models is made.
+
+\subsection{Division of Work}
+We plan to jointly brainstorm new iterations of our graphical models and extensions to likelihood-comparison evaluation. The actual implementation of iterations will be distributed among us, according to our strengths. We plan to use Python and R for our coding, analysis, estimation, and evaluation tasks. Both of us are proficient with both tools, so we will assign smaller tasks in roughly even workloads. For now, a tentative split of labor could be that Christian focuses on building the codebase for the graph formation rules, while Meghanath focuses on writing code for the likelihood-comparison evaluation.
+
+\subsection{Timeline}
+
+By the midterm report, we hope to have established a satisfactory pipeline for evaluating model iterations, such that we can implement and test distributional choices and rules efficiently. The baseline for doing this is a mere comparison of model likelihood [1]. By the end of the semester, we hope to extend this evaluation approach and, as an application, arrive at a satisfactory model of online review activity.
+
+\subsection{References}
+
+1. J. Leskovec, L. Backstrom, R. Kumar, and A. Tomkins. \textit{Microscopic
+evolution of social networks.} In \textit{KDD '08}, pages 462–470, 2008
+
+\end{document}
