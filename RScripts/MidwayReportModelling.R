@@ -245,6 +245,28 @@ usersWithMinTimestamps$weeks_cu = (usersWithMinTimestamps$weeks)^3
 
 lm(usersWithMinTimestamps$cumulativeNumUsers ~ 0 + usersWithMinTimestamps$weeks + usersWithMinTimestamps$weeks_sq + usersWithMinTimestamps$weeks_cu)
 
+## compare number of apps:
+appsWithMinTimestamps
+
+
+currentApps$appDummyCol = 1
+simulatedAppsPerWeek = aggregate(currentApps$appDummyCol, by = list(currentApps$timestep, currentApps$appid), FUN = sum)
+simulatedAppsPerWeek$appDummyCol = 1
+simulatedAppsPerWeek$x <- NULL
+simulatedAppsPerWeek = aggregate(simulatedAppsPerWeek$appDummyCol, by = list(simulatedAppsPerWeek$Group.1), FUN = sum)
+setnames(simulatedAppsPerWeek, "Group.1", "weekIndex")
+setnames(simulatedAppsPerWeek, "x", "numApps")
+simulatedAppsPerWeek$cumulativeNumApps = cumsum(simulatedAppsPerWeek$numApps)
+
+ggplot() + 
+  geom_line(data = appsWithMinTimestamps, aes(x =weeks, y = cumulativeNumApps , colour = "Data"))  + 
+  geom_point(data = simulatedAppsPerWeek, aes(x =weekIndex, y = cumulativeNumApps , colour = "Simulated")) +
+  labs(x = "weekIndex", title = "Number of apps per week") + scale_colour_manual("", breaks = c("Data", "Simulated"), values = c("red", "blue"))
+
+ggsave("weeklyNumberOfApps_BasicModel_RealVsSimulated.png")
+
+
+
 
 #Compare the degree distribution:
 
