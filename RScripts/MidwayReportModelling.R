@@ -115,8 +115,8 @@ for (t in T_0+1:T_timesteps) {
   
   numNewApps = round(N_A_t(t) - N_A_t(t - 1))
   numNewUsers = round(N_U_t(t) - N_U_t(t -1))
-  print("num new users:")
-  print(numNewUsers)
+  print("num new apps:")
+  print(numNewApps)
   newApps = instantiateNewApps(lastAppIndexUsed, numNewApps)
   newUsers = instantiateNewUsers(lastUserIndexUsed,numNewUsers)
   newUsers$timestep = t
@@ -129,13 +129,9 @@ for (t in T_0+1:T_timesteps) {
   #2. Create edges based on PA within a genre, conditional on the users being alive.
   #a. sample users' chosen next genre based on 1-MM
   aliveUsers = currentUsers[which(currentUsers$aliveStatus == 1),]
-  print("new alive users:")
-  print(nrow(aliveUsers))
   aliveUsers$nextGenre = lapply(aliveUsers$userGenre, function(x) sample(c(1,2,3,4,5,6),1,prob=genreMarkovMatrix[,x])[1])
   
   aliveApps = currentApps[which(currentApps$aliveStatus == 1),]
-  print("new alive apps:")
-  print(nrow(aliveApps))
   
   #b. assign an edge according to PA within that genre
   newApps$x = 1
@@ -176,8 +172,6 @@ for (t in T_0+1:T_timesteps) {
   
   
   #c. sample a rating based on users' rating histograms.
-  
-  print("updating lifespans")
   
   #3. Update everyone's lifespan
   currentApps$appLifetime = currentApps$appLifetime - 1
@@ -221,6 +215,8 @@ ggplot() +
   geom_point(data = simulatedEdgesPerWeek[which(simulatedEdgesPerWeek$weekIndex <= 195),], aes(x =weekIndex, y = numEdges, colour = "Simulated" )) +
 labs(x = "weekIndex", title = "Weekly Number of New Edges - Basic Model") + scale_colour_manual("", breaks = c("Data", "Simulated"), values = c("red", "blue"))
 
+ggsave("weeklyNumberOfEdges_BasicModel_RealVsSimulated.png")
+
 #Check: compare the number of users and apps:
 usersWithMinTimestamps$weeks = round(usersWithMinTimestamps$weeks)
 usersWithMinTimestamps = usersWithMinTimestamps[order(usersWithMinTimestamps$weeks),]
@@ -237,15 +233,44 @@ setnames(simulatedUsersPerWeek, "x", "numUsers")
 simulatedUsersPerWeek$cumulativeNumUsers = cumsum(simulatedUsersPerWeek$numUsers)
 
 ggplot() + 
-  geom_line(data = usersWithMinTimestamps, aes(x =weeks, y = cumulativeNumUsers ))  + 
-  geom_point(data = simulatedUsersPerWeek, aes(x =weekIndex, y = cumulativeNumUsers )) +
-labs(x = "weekIndex", title = "Number of users per week")
+  geom_line(data = usersWithMinTimestamps, aes(x =weeks, y = cumulativeNumUsers , colour = "Data"))  + 
+  geom_point(data = simulatedUsersPerWeek, aes(x =weekIndex, y = cumulativeNumUsers , colour = "Simulated")) +
+labs(x = "weekIndex", title = "Number of users per week") + scale_colour_manual("", breaks = c("Data", "Simulated"), values = c("red", "blue"))
+
+ggsave("weeklyNumberOfUsers_BasicModel_RealVsSimulated.png")
 
 
 usersWithMinTimestamps$weeks_sq = (usersWithMinTimestamps$weeks)^2
 usersWithMinTimestamps$weeks_cu = (usersWithMinTimestamps$weeks)^3
 
 lm(usersWithMinTimestamps$cumulativeNumUsers ~ 0 + usersWithMinTimestamps$weeks + usersWithMinTimestamps$weeks_sq + usersWithMinTimestamps$weeks_cu)
+
+
+#Compare the degree distribution:
+
+  #From the data:
+
+realDataEdges = as.data.frame(unique(inputMetaData[c("appid", "userid")]))
+realDataEdges$degreeDummyCol = 1
+realAppDegrees = aggregate(realDataEdges$degreeDummyCol, by = list(realDataEdges$appid), FUN = sum)
+realAppDegrees$degreeCountDummyCol = 1
+realAppDegreeCounts = aggregate(realAppDegrees$degreeCountDummyCol, by = list(realAppDegrees$x), FUN = sum)
+realAppDegreeCounts$logDegree = log(realAppDegreeCounts$Group.1)
+realAppDegreeCounts$logCount = log(realAppDegreeCounts$x)
+
+currentEdges$degreeDummyCol = 1
+appDegreeDistrbution = aggregate(currentEdges$degreeDummyCol, by = list(currentEdges$appid), FUN = sum)
+appDegreeDistrbution$degreeCountDummyCol = 1
+appDegreeCountDistrbution = aggregate(appDegreeDistrbution$degreeCountDummyCol, by = list(appDegreeDistrbution$x), FUN = sum)
+appDegreeCountDistrbution$logDegree = log(appDegreeCountDistrbution$Group.1)
+appDegreeCountDistrbution$logCount = log(appDegreeCountDistrbution$x)
+
+qplot(log(x), data = appDegreeDistrbution[which(appDegreeDistrbution$x >= 2 & appDegreeDistrbution$x < 500),], geom = "histogram")
+
+ggplot() + geom_point(data = appDegreeCountDistrbution, aes(x = logDegree, y = logCount, colour = "Simulated")) + 
+  geom_point(data = realAppDegreeCounts, aes(x = logDegree, y = logCount, colour = "Data")) + 
+  labs(x = "logDegree", y = "logCount", title = "Degree Distribution in Real and Simulated Data") + scale_colour_manual("", breaks = c("Simulated", "Data"), values = c("red", "blue"))
+ggsave("degreeDistribution_BasicModel_RealVsSimulated.png")
 
 #####################
 #### 2. Calculate histograms, MM's, and lamdbas for the Basic model
