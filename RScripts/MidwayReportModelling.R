@@ -5,7 +5,7 @@ library(data.table)
 library(ggplot2)
 library(sqldf)
 library(MASS)
-setwd('/Users/Chris/Downloads/iTunesData')
+setwd('/Users/cperez/Desktop/iTunesData')
 
 inputMetaData = prepareData("itunes3_reviews_meta.csv")
 #appsWithCategories = read.csv("appCategories.csv")
